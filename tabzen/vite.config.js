@@ -14,8 +14,9 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
+        // Keep all shared code in one predictable file, no hashed chunks
+        chunkFileNames: 'shared.js',
+        assetFileNames: 'assets/[name][extname]',
       },
     },
   },

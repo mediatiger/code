@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import useStore from '../store/useStore';
 
 const COLORS = [
@@ -32,8 +33,16 @@ export default function Sidebar() {
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [menuId, setMenuId] = useState(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const [colorPickerId, setColorPickerId] = useState(null);
   const editRef = useRef(null);
+
+  const openMenu = useCallback((spaceId, e) => {
+    // Get the position of the trigger element for fixed positioning
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.top, left: rect.right + 4 });
+    setMenuId(menuId === spaceId ? null : spaceId);
+  }, [menuId]);
 
   useEffect(() => {
     if (editingId && editRef.current) editRef.current.focus();
@@ -101,7 +110,7 @@ export default function Sidebar() {
               onClick={() => setActiveSpace(sp.id)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                setMenuId(menuId === sp.id ? null : sp.id);
+                openMenu(sp.id, e);
               }}
               className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
                 activeSpaceId === sp.id
@@ -134,7 +143,7 @@ export default function Sidebar() {
               <span
                 onClick={(e) => {
                   e.stopPropagation();
-                  setMenuId(menuId === sp.id ? null : sp.id);
+                  openMenu(sp.id, e);
                 }}
                 className="opacity-0 group-hover:opacity-100 text-txt-muted hover:text-txt-primary transition-opacity cursor-pointer ml-1 text-xs"
               >
@@ -142,53 +151,7 @@ export default function Sidebar() {
               </span>
             </button>
 
-            {/* Context menu */}
-            {menuId === sp.id && (
-              <div className="absolute left-full top-0 ml-1 z-50 bg-canvas-elevated border border-white/[0.06] rounded-lg shadow-xl py-1 min-w-[160px] animate-fade-in">
-                <button
-                  onClick={() => {
-                    setEditingId(sp.id);
-                    setEditValue(sp.name);
-                    setMenuId(null);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-txt-secondary hover:text-txt-primary hover:bg-canvas-hover"
-                >
-                  Переименовать
-                </button>
-                <button
-                  onClick={() => {
-                    setColorPickerId(colorPickerId === sp.id ? null : sp.id);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-txt-secondary hover:text-txt-primary hover:bg-canvas-hover"
-                >
-                  Цвет
-                </button>
-                {colorPickerId === sp.id && (
-                  <div className="flex gap-1.5 px-3 py-1.5">
-                    {COLORS.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => {
-                          updateSpaceColor(sp.id, c.id);
-                          setColorPickerId(null);
-                          setMenuId(null);
-                        }}
-                        className={`w-4 h-4 rounded-full ${c.css} ${
-                          sp.color === c.id ? 'ring-2 ring-white/40' : ''
-                        } hover:scale-125 transition-transform`}
-                        title={c.label}
-                      />
-                    ))}
-                  </div>
-                )}
-                <button
-                  onClick={() => handleDelete(sp)}
-                  className="w-full text-left px-3 py-1.5 text-sm text-rose-accent hover:bg-rose-muted"
-                >
-                  Удалить
-                </button>
-              </div>
-            )}
+            {/* Context menu — rendered via portal to escape overflow clipping */}
           </div>
         ))}
 
@@ -202,9 +165,55 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Close menu on click outside */}
-      {menuId && (
-        <div className="fixed inset-0 z-40" onClick={() => { setMenuId(null); setColorPickerId(null); }} />
+      {/* Context menu — portal to body so it's never clipped by sidebar overflow */}
+      {menuId && createPortal(
+        <>
+          <div className="fixed inset-0 z-[999]" onClick={() => { setMenuId(null); setColorPickerId(null); }} />
+          <div
+            className="fixed z-[1000] bg-canvas-elevated border border-white/[0.06] rounded-lg shadow-xl py-1 min-w-[160px] animate-fade-in"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            {(() => {
+              const sp = spaces.find((s) => s.id === menuId);
+              if (!sp) return null;
+              return (
+                <>
+                  <button
+                    onClick={() => { setEditingId(sp.id); setEditValue(sp.name); setMenuId(null); }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-txt-secondary hover:text-txt-primary hover:bg-canvas-hover"
+                  >
+                    Переименовать
+                  </button>
+                  <button
+                    onClick={() => setColorPickerId(colorPickerId === sp.id ? null : sp.id)}
+                    className="w-full text-left px-3 py-1.5 text-sm text-txt-secondary hover:text-txt-primary hover:bg-canvas-hover"
+                  >
+                    Цвет
+                  </button>
+                  {colorPickerId === sp.id && (
+                    <div className="flex gap-1.5 px-3 py-1.5">
+                      {COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => { updateSpaceColor(sp.id, c.id); setColorPickerId(null); setMenuId(null); }}
+                          className={`w-4 h-4 rounded-full ${c.css} ${sp.color === c.id ? 'ring-2 ring-white/40' : ''} hover:scale-125 transition-transform`}
+                          title={c.label}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleDelete(sp)}
+                    className="w-full text-left px-3 py-1.5 text-sm text-rose-accent hover:bg-rose-muted"
+                  >
+                    Удалить
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        </>,
+        document.body
       )}
     </aside>
   );

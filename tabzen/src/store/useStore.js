@@ -36,7 +36,9 @@ const useStore = create((set, get) => ({
 
   // --- Open tabs ---
   loadOpenTabs: async () => {
-    set({ openTabsLoading: true });
+    // Only show loading spinner on initial fetch (when openTabs is empty)
+    const isInitial = get().openTabs.length === 0 && get().openTabsLoading;
+    if (isInitial) set({ openTabsLoading: true });
     const tabs = await getOpenTabs();
     set({ openTabs: tabs, openTabsLoading: false });
   },

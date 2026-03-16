@@ -1,0 +1,150 @@
+/* ============================================
+   TabZen Popup — Minimal Micro-Actions
+   ============================================ */
+
+:root {
+  --canvas-deep: #0f0f12;
+  --canvas-base: #141418;
+  --canvas-elevated: #1a1a1f;
+  --canvas-surface: #222228;
+  --canvas-hover: #2a2a32;
+  
+  --text-primary: #e8e6e3;
+  --text-secondary: #9d9a94;
+  --text-muted: #6b6860;
+  
+  --accent-warm: #c9a962;
+  
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-soft: rgba(255, 255, 255, 0.06);
+  
+  --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  
+  --ease-out-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --duration-fast: 150ms;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--canvas-base);
+  width: 280px;
+  padding: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.popup-logo {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--accent-warm) 0%, rgba(201, 169, 98, 0.6) 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.popup-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popup-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 
+    background-color var(--duration-fast) var(--ease-out-soft),
+    border-color var(--duration-fast) var(--ease-out-soft),
+    transform var(--duration-fast) var(--ease-out-soft);
+}
+
+.popup-btn:hover {
+  background: var(--canvas-surface);
+  border-color: var(--border-soft);
+  transform: translateY(-1px);
+}
+
+.popup-btn:active {
+  transform: translateY(0);
+}
+
+.popup-btn-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.popup-btn.primary {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+  color: var(--canvas-deep);
+}
+
+.popup-btn.primary:hover {
+  background: #d4b46d;
+  border-color: #d4b46d;
+}
+
+.popup-btn.primary .popup-btn-icon {
+  color: var(--canvas-deep);
+}
+
+/* Keyboard shortcut hint */
+.popup-btn-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--canvas-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.popup-btn.primary .popup-btn-hint {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--canvas-deep);
+}

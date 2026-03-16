@@ -454,9 +454,30 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, var(--space-learning), #7a9ab5); 
   color: var(--space-learning); 
 }
-.space-dot.personal { 
-  background: linear-gradient(135deg, var(--space-personal), #b58c8c); 
-  color: var(--space-personal); 
+.space-dot.personal {
+  background: linear-gradient(135deg, var(--space-personal), #b58c8c);
+  color: var(--space-personal);
+}
+.space-dot.all {
+  background: linear-gradient(135deg, var(--accent-warm), var(--accent-warm-bright));
+  color: var(--accent-warm);
+}
+.space-dot.inbox {
+  background: linear-gradient(135deg, var(--text-tertiary), var(--text-secondary));
+  color: var(--text-tertiary);
+}
+
+/* Drag-over state for spaces (drop target highlight) */
+.space-item.drag-over {
+  background: var(--accent-warm-muted);
+  border-color: var(--accent-warm);
+  box-shadow: 0 0 0 1px var(--accent-warm-subtle), inset 0 0 8px var(--accent-warm-subtle);
+  transform: scale(1.02);
+}
+
+/* Drag placeholder line */
+.drag-placeholder {
+  pointer-events: none;
 }
 
 .space-name {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TabZen",
-  "version": "2.0.0",
-  "description": "Спокойное рабочее пространство для вкладок браузера",
+  "version": "0.1.0",
+  "description": "Local tab workspace manager",
   "permissions": ["tabs", "storage"],
   "chrome_url_overrides": {
     "newtab": "index.html"

@@ -1720,3 +1720,238 @@ a:hover {
     display: none;
   }
 }
+
+/* ============================================
+   Options Modal
+   ============================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 200ms ease-out;
+}
+
+.modal-overlay.closing {
+  animation: modalFadeOut 200ms ease-in forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.modal-panel {
+  background: var(--canvas-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: var(--shadow-lg);
+  animation: modalSlideIn 250ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modal-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--canvas-hover);
+}
+
+.modal-body {
+  padding: var(--space-5);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.setting-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.setting-control {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.lang-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--canvas-surface);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.lang-btn:hover {
+  background: var(--canvas-hover);
+  color: var(--text-primary);
+  border-color: var(--border-visible);
+}
+
+.lang-btn.active {
+  background: var(--accent-warm-muted);
+  color: var(--accent-warm-bright);
+  border-color: var(--accent-warm);
+}
+
+/* ============================================
+   Open Tabs Section
+   ============================================ */
+
+.open-tabs-section {
+  margin-bottom: var(--space-8);
+}
+
+.open-tabs-section .section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.section-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.section-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--canvas-surface);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.section-btn:hover {
+  background: var(--accent-warm-muted);
+  color: var(--accent-warm-bright);
+  border-color: var(--accent-warm);
+}
+
+.section-btn.danger:hover {
+  background: var(--accent-rose-muted);
+  color: var(--accent-rose);
+  border-color: var(--accent-rose);
+}
+
+.open-tab-card {
+  cursor: pointer;
+}
+
+.open-tab-card:hover {
+  border-color: var(--border-visible);
+}
+
+/* Tab badge (active indicator) */
+.tab-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-warm-muted);
+  color: var(--accent-warm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   Toast Notifications
+   ============================================ */
+
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--canvas-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-warm);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 200ms ease, transform 200ms ease;
+  pointer-events: auto;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   Topbar date
+   ============================================ */
+
+.topbar-date {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}

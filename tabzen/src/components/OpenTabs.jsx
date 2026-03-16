@@ -130,7 +130,7 @@ export default function OpenTabs({ searchQuery }) {
         </div>
       ) : (
         /* Bug 1 fix: horizontal scrollable row of compact chips */
-        <div className="relative">
+        <div className="relative min-w-0 max-w-full">
           {/* Fade edges */}
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-canvas-deep to-transparent z-10" />
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-canvas-deep to-transparent z-10" />

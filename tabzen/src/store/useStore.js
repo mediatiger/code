@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { spaceId, sessId, groupId, tabId } from '../utils/ids';
 import { loadState, saveState, getOpenTabs } from '../utils/chrome';
 
-const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal'];
+const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal', 'amber', 'orange', 'coral', 'rose', 'violet', 'indigo', 'teal', 'emerald', 'lime', 'slate'];
 
 const defaultSpaces = [
   { id: 'space_default_1', name: 'MEDIA Tiger', color: 'media', sessions: [] },

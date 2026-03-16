@@ -30,6 +30,16 @@
   --color-space-crypto: #967d5e;
   --color-space-learning: #6584a0;
   --color-space-personal: #a07878;
+  --color-space-amber: #b89d5a;
+  --color-space-orange: #b87d4a;
+  --color-space-coral: #b86e62;
+  --color-space-rose: #b06882;
+  --color-space-violet: #9468a8;
+  --color-space-indigo: #6a6daa;
+  --color-space-teal: #5a9a8e;
+  --color-space-emerald: #5a9a6e;
+  --color-space-lime: #7e9a52;
+  --color-space-slate: #7a808a;
 
   /* Fonts */
   --font-sans: 'Instrument Sans', system-ui, sans-serif;

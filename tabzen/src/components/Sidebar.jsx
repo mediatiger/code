@@ -8,6 +8,16 @@ const COLORS = [
   { id: 'crypto', label: 'Коричневый', css: 'bg-space-crypto' },
   { id: 'learning', label: 'Синий', css: 'bg-space-learning' },
   { id: 'personal', label: 'Розовый', css: 'bg-space-personal' },
+  { id: 'amber', label: 'Янтарный', css: 'bg-space-amber' },
+  { id: 'orange', label: 'Оранжевый', css: 'bg-space-orange' },
+  { id: 'coral', label: 'Коралловый', css: 'bg-space-coral' },
+  { id: 'rose', label: 'Роза', css: 'bg-space-rose' },
+  { id: 'violet', label: 'Фиалковый', css: 'bg-space-violet' },
+  { id: 'indigo', label: 'Индиго', css: 'bg-space-indigo' },
+  { id: 'teal', label: 'Бирюзовый', css: 'bg-space-teal' },
+  { id: 'emerald', label: 'Изумрудный', css: 'bg-space-emerald' },
+  { id: 'lime', label: 'Лаймовый', css: 'bg-space-lime' },
+  { id: 'slate', label: 'Серый', css: 'bg-space-slate' },
 ];
 
 const dotColor = (c) => {
@@ -17,6 +27,16 @@ const dotColor = (c) => {
     crypto: 'bg-space-crypto',
     learning: 'bg-space-learning',
     personal: 'bg-space-personal',
+    amber: 'bg-space-amber',
+    orange: 'bg-space-orange',
+    coral: 'bg-space-coral',
+    rose: 'bg-space-rose',
+    violet: 'bg-space-violet',
+    indigo: 'bg-space-indigo',
+    teal: 'bg-space-teal',
+    emerald: 'bg-space-emerald',
+    lime: 'bg-space-lime',
+    slate: 'bg-space-slate',
   };
   return map[c] || 'bg-warm';
 };
@@ -191,7 +211,7 @@ export default function Sidebar() {
                     Цвет
                   </button>
                   {colorPickerId === sp.id && (
-                    <div className="flex gap-1.5 px-3 py-1.5">
+                    <div className="flex flex-wrap gap-1.5 px-3 py-1.5 max-w-[180px]">
                       {COLORS.map((c) => (
                         <button
                           key={c.id}

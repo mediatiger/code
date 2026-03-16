@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Warm Dark Palette */
+  --color-canvas-deep: #0e0e11;
+  --color-canvas-base: #131316;
+  --color-canvas-elevated: #19191d;
+  --color-canvas-surface: #201f24;
+  --color-canvas-hover: #28272d;
+  --color-canvas-active: #302f36;
+
+  /* Text */
+  --color-txt-primary: #ebe9e4;
+  --color-txt-secondary: #a09c95;
+  --color-txt-tertiary: #706c63;
+  --color-txt-muted: #4d4940;
+
+  /* Accents */
+  --color-warm: #d4b06a;
+  --color-warm-bright: #e0c080;
+  --color-warm-muted: rgba(212,176,106,0.15);
+  --color-warm-subtle: rgba(212,176,106,0.08);
+
+  --color-rose-accent: #c9827a;
+  --color-rose-muted: rgba(201,130,122,0.15);
+
+  /* Space colors */
+  --color-space-media: #8578a8;
+  --color-space-projects: #72977a;
+  --color-space-crypto: #967d5e;
+  --color-space-learning: #6584a0;
+  --color-space-personal: #a07878;
+
+  /* Fonts */
+  --font-sans: 'Instrument Sans', system-ui, sans-serif;
+  --font-serif: 'Fraunces', serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #302f36 transparent;
+}
+
+::selection {
+  background: rgba(212, 176, 106, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+@utility animate-spin {
+  animation: spin 1s linear infinite;
+}

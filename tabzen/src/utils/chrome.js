@@ -4,52 +4,62 @@ const isChromeExt = typeof chrome !== 'undefined' && chrome.storage;
 
 export async function loadState() {
   if (!isChromeExt) return null;
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['tabzen'], (result) => {
-      resolve(result.tabzen || null);
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['tabzen'], (result) => {
+        resolve(result.tabzen || null);
+      });
     });
-  });
+  } catch { return null; }
 }
 
 export async function saveState(data) {
   if (!isChromeExt) return;
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ tabzen: data }, resolve);
-  });
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ tabzen: data }, resolve);
+    });
+  } catch { /* ignore */ }
 }
 
 export async function loadSettings() {
   if (!isChromeExt) return null;
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['tabzen_settings'], (result) => {
-      resolve(result.tabzen_settings || null);
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['tabzen_settings'], (result) => {
+        resolve(result.tabzen_settings || null);
+      });
     });
-  });
+  } catch { return null; }
 }
 
 export async function saveSettings(settings) {
   if (!isChromeExt) return;
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ tabzen_settings: settings }, resolve);
-  });
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ tabzen_settings: settings }, resolve);
+    });
+  } catch { /* ignore */ }
 }
 
 export async function getOpenTabs() {
   if (!isChromeExt || !chrome.tabs) return [];
-  return new Promise((resolve) => {
-    chrome.tabs.query({ currentWindow: true }, (tabs) => {
-      resolve(
-        (tabs || []).filter(
-          (t) =>
-            t.url &&
-            !t.url.startsWith('chrome://') &&
-            !t.url.startsWith('chrome-extension://') &&
-            !t.url.startsWith('about:') &&
-            !t.url.startsWith('edge://')
-        )
-      );
+  try {
+    return new Promise((resolve) => {
+      chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        resolve(
+          (tabs || []).filter(
+            (t) =>
+              t.url &&
+              !t.url.startsWith('chrome://') &&
+              !t.url.startsWith('chrome-extension://') &&
+              !t.url.startsWith('about:') &&
+              !t.url.startsWith('edge://')
+          )
+        );
+      });
     });
-  });
+  } catch { return []; }
 }
 
 export async function createTab(url) {
@@ -57,35 +67,68 @@ export async function createTab(url) {
     window.open(url, '_blank');
     return;
   }
-  return chrome.tabs.create({ url });
+  try { return chrome.tabs.create({ url }); } catch { /* ignore */ }
 }
 
 export async function closeTab(tabId) {
   if (!isChromeExt || !chrome.tabs) return;
-  return chrome.tabs.remove(tabId);
+  try { return chrome.tabs.remove(tabId); } catch { /* ignore */ }
 }
 
 export async function focusTab(tabId) {
   if (!isChromeExt || !chrome.tabs) return;
-  return chrome.tabs.update(tabId, { active: true });
+  try { return chrome.tabs.update(tabId, { active: true }); } catch { /* ignore */ }
 }
 
 export async function getCurrentTab() {
   if (!isChromeExt || !chrome.tabs) return null;
-  return new Promise((resolve) => {
-    chrome.tabs.getCurrent((tab) => resolve(tab || null));
-  });
+  try {
+    return new Promise((resolve) => {
+      chrome.tabs.getCurrent((tab) => resolve(tab || null));
+    });
+  } catch { return null; }
 }
 
 export async function closeAllTabsExcept(keepTabId) {
   if (!isChromeExt || !chrome.tabs) return;
-  return new Promise((resolve) => {
-    chrome.tabs.query({ currentWindow: true }, (tabs) => {
-      const toClose = (tabs || [])
-        .filter((t) => t.id !== keepTabId && !t.url?.startsWith('chrome://') && !t.url?.startsWith('chrome-extension://'))
-        .map((t) => t.id);
-      if (toClose.length) chrome.tabs.remove(toClose, resolve);
-      else resolve();
+  try {
+    return new Promise((resolve) => {
+      chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        const toClose = (tabs || [])
+          .filter((t) => t.id !== keepTabId && !t.url?.startsWith('chrome://') && !t.url?.startsWith('chrome-extension://'))
+          .map((t) => t.id);
+        if (toClose.length) chrome.tabs.remove(toClose, resolve);
+        else resolve();
+      });
     });
-  });
+  } catch { /* ignore */ }
+}
+
+export async function getStorageUsage() {
+  if (!isChromeExt) return 0;
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.getBytesInUse(null, (bytes) => resolve(bytes || 0));
+    });
+  } catch { return 0; }
+}
+
+export async function exportAllData() {
+  if (!isChromeExt) return null;
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['tabzen', 'tabzen_settings'], (result) => {
+        resolve(result);
+      });
+    });
+  } catch { return null; }
+}
+
+export async function importAllData(data) {
+  if (!isChromeExt) return;
+  try {
+    return new Promise((resolve) => {
+      chrome.storage.local.set(data, resolve);
+    });
+  } catch { /* ignore */ }
 }

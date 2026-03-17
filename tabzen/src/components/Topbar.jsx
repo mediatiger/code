@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import useStore, { getSessionTabs } from '../store/useStore';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -16,8 +17,17 @@ function getDate() {
   });
 }
 
-export default function Topbar({ searchQuery, setSearchQuery }) {
+function safeHostname(url) {
+  try { return new URL(url).hostname; } catch { return url; }
+}
+
+export default function Topbar({ searchQuery, setSearchQuery, onNavigateSession }) {
   const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [focused, setFocused] = useState(false);
+  const spaces = useStore((s) => s.spaces);
+  const saveCurrentTabs = useStore((s) => s.saveCurrentTabs);
+  const activeSpaceId = useStore((s) => s.activeSpaceId);
 
   useEffect(() => {
     const handler = (e) => {
@@ -26,10 +36,53 @@ export default function Topbar({ searchQuery, setSearchQuery }) {
         inputRef.current?.focus();
         inputRef.current?.select();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        const targetId = activeSpaceId || spaces[0]?.id;
+        if (targetId) saveCurrentTabs(targetId);
+      }
+      if (e.key === 'Escape' && focused) {
+        setSearchQuery('');
+        inputRef.current?.blur();
+      }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  }, [focused, activeSpaceId, spaces]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Search results: find all tabs across all spaces/sessions
+  const searchResults = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 1) return [];
+    const q = searchQuery.toLowerCase();
+    const results = [];
+    for (const sp of spaces) {
+      for (const sess of sp.sessions) {
+        for (const tab of getSessionTabs(sess)) {
+          if (tab.title.toLowerCase().includes(q) || tab.url.toLowerCase().includes(q)) {
+            results.push({ tab, session: sess, space: sp });
+          }
+        }
+        // Also match session title
+        if (sess.title.toLowerCase().includes(q) && results.every((r) => r.session.id !== sess.id || r.tab)) {
+          // Add session as a header-like result
+        }
+      }
+    }
+    return results.slice(0, 20);
+  }, [searchQuery, spaces]);
+
+  const showDropdown = focused && searchQuery.length > 0;
 
   return (
     <header className="flex items-center justify-between px-8 py-5 border-b border-white/[0.04] shrink-0">
@@ -40,30 +93,69 @@ export default function Topbar({ searchQuery, setSearchQuery }) {
         <p className="text-xs text-txt-tertiary mt-0.5">{getDate()}</p>
       </div>
       <div className="flex items-center gap-3">
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <input
             ref={inputRef}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setFocused(true)}
             placeholder="Поиск вкладок, проектов..."
             className="w-64 bg-canvas-surface border border-white/[0.04] rounded-xl px-4 py-2 pl-9 text-sm text-txt-primary placeholder:text-txt-muted focus:border-warm/30 focus:outline-none transition-colors"
           />
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted"
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+            width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
           >
             <circle cx="7" cy="7" r="4.5" />
             <path d="M10.5 10.5L14 14" />
           </svg>
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-txt-muted bg-canvas-hover px-1.5 py-0.5 rounded">
-            ⌘K
-          </span>
+          {!searchQuery && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-txt-muted bg-canvas-hover px-1.5 py-0.5 rounded">
+              ⌘K
+            </span>
+          )}
+
+          {/* Search dropdown */}
+          {showDropdown && (
+            <div className="absolute top-full mt-2 right-0 w-96 max-h-80 overflow-y-auto bg-canvas-elevated border border-white/[0.06] rounded-xl shadow-2xl z-50 animate-fade-in">
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-txt-muted">
+                  Ничего не найдено
+                </div>
+              ) : (
+                <div className="py-1">
+                  {searchResults.map(({ tab, session, space }, i) => (
+                    <button
+                      key={`${tab.id}-${i}`}
+                      onClick={() => {
+                        if (onNavigateSession) onNavigateSession(space.id, session.id);
+                        setFocused(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-canvas-hover transition-colors flex items-start gap-3"
+                    >
+                      <div className="w-4 h-4 shrink-0 mt-0.5">
+                        {tab.favicon ? (
+                          <img src={tab.favicon} width="14" height="14" className="rounded-sm" alt="" />
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
+                            <circle cx="8" cy="8" r="6" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-txt-primary truncate">{tab.title}</p>
+                        <p className="text-xs text-txt-muted truncate">{safeHostname(tab.url)}</p>
+                        <p className="text-[10px] text-txt-muted mt-0.5 truncate">
+                          {space.name} &rsaquo; {session.title}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { spaceId, sessId, groupId, tabId } from '../utils/ids';
-import { loadState, saveState, getOpenTabs, loadSettings, saveSettings, getCurrentTab, closeAllTabsExcept } from '../utils/chrome';
+import { loadState, saveState, getOpenTabs, loadSettings, saveSettings, getCurrentTab, closeAllTabsExcept, exportAllData, importAllData } from '../utils/chrome';
 
 const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal', 'amber', 'orange', 'coral', 'rose', 'violet', 'indigo', 'teal', 'emerald', 'lime', 'slate'];
 
@@ -19,12 +19,6 @@ function persist(state) {
 // Helper: get all tabs from a session (flatten groups)
 export function getSessionTabs(session) {
   return session.groups.flatMap((g) => g.tabs);
-}
-
-// Helper: get groups[0].id, creating one if missing
-function ensureGroup(session) {
-  if (session.groups.length > 0) return session;
-  return { ...session, groups: [{ id: `group_${Date.now()}`, name: 'Вкладки', tabs: [] }] };
 }
 
 const useStore = create((set, get) => ({
@@ -183,6 +177,7 @@ const useStore = create((set, get) => ({
       persist({ spaces });
       return { spaces };
     });
+    get().showToast(`Сессия сохранена — ${sessionTabs.length} вкладок`);
     return id;
   },
 
@@ -255,8 +250,7 @@ const useStore = create((set, get) => ({
     if (session) {
       const existing = getSessionTabs(session).some((t) => t.url === tab.url);
       if (existing) {
-        set({ toast: { message: 'Вкладка уже сохранена', type: 'warn' } });
-        setTimeout(() => set({ toast: null }), 2500);
+        get().showToast('Вкладка уже сохранена', 'warn');
         return 'duplicate';
       }
     }
@@ -375,9 +369,51 @@ const useStore = create((set, get) => ({
   // ============================================
   // TOAST
   // ============================================
+  _toastTimer: null,
   showToast: (message, type = 'info') => {
-    set({ toast: { message, type } });
-    setTimeout(() => set({ toast: null }), 2500);
+    clearTimeout(get()._toastTimer);
+    const timer = setTimeout(() => set({ toast: null }), 3000);
+    set({ toast: { message, type }, _toastTimer: timer });
+  },
+
+  // ============================================
+  // IMPORT / EXPORT
+  // ============================================
+  exportData: async () => {
+    try {
+      const data = await exportAllData();
+      if (!data) return;
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `tabzen-backup-${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      get().showToast('Данные экспортированы');
+    } catch {
+      get().showToast('Ошибка экспорта', 'error');
+    }
+  },
+
+  importData: async (jsonString) => {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data.tabzen?.spaces || !Array.isArray(data.tabzen.spaces)) {
+        get().showToast('Неверный формат файла', 'error');
+        return false;
+      }
+      if (!confirm('Это заменит все ваши данные. Продолжить?')) return false;
+      await importAllData(data);
+      get().showToast('Данные импортированы');
+      window.location.reload();
+      return true;
+    } catch {
+      get().showToast('Ошибка: файл повреждён или неверного формата', 'error');
+      return false;
+    }
   },
 
   // ============================================

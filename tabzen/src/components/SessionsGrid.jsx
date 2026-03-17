@@ -6,6 +6,23 @@ function safeHostname(url) {
   try { return new URL(url).hostname; } catch { return url; }
 }
 
+function relativeDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 1) return 'Только что';
+  if (diffMin < 60) return `${diffMin} мин. назад`;
+  if (diffHr < 24) return `${diffHr} ч. назад`;
+  if (diffDay === 1) return 'Вчера';
+  if (diffDay < 7) return `${diffDay} дн. назад`;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function FaviconSaved({ url, size = 14 }) {
   const [failed, setFailed] = useState(false);
   if (!url || failed) {
@@ -17,35 +34,39 @@ function FaviconSaved({ url, size = 14 }) {
     );
   }
   return (
-    <img
-      src={url}
-      width={size}
-      height={size}
-      alt=""
-      className="rounded-sm"
-      onError={() => setFailed(true)}
-    />
+    <img src={url} width={size} height={size} alt="" className="rounded-sm" onError={() => setFailed(true)} />
   );
 }
 
-function SessionCard({ space, session }) {
+function SessionCard({ space, session, forceExpand, onExpandHandled }) {
   const renameSession = useStore((s) => s.renameSession);
   const deleteSession = useStore((s) => s.deleteSession);
   const removeTab = useStore((s) => s.removeTab);
   const addTab = useStore((s) => s.addTab);
   const moveTab = useStore((s) => s.moveTab);
   const settings = useStore((s) => s.settings);
+  const showToast = useStore((s) => s.showToast);
 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(session.title);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [dragOverTabIdx, setDragOverTabIdx] = useState(null);
   const inputRef = useRef(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
+
+  // Force expand from search navigation
+  useEffect(() => {
+    if (forceExpand) {
+      setExpanded(true);
+      if (onExpandHandled) onExpandHandled();
+    }
+  }, [forceExpand]);
 
   const commit = () => {
     if (editValue.trim()) renameSession(space.id, session.id, editValue.trim());
@@ -58,25 +79,28 @@ function SessionCard({ space, session }) {
   const handleRestore = (e) => {
     e.stopPropagation();
     allTabs.forEach((tab) => createTab(tab.url));
+    showToast(`Открыто ${allTabs.length} вкладок`);
   };
 
   const handleDelete = (e) => {
     e.stopPropagation();
     if (allTabs.length > 0 && !confirm(`Удалить сессию "${session.title}" (${allTabs.length} вкл.)?`)) return;
     deleteSession(space.id, session.id);
+    showToast('Сессия удалена');
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
+    setDragOverTabIdx(null);
     if (!group0Id) return;
 
     const tabData = e.dataTransfer.getData('application/tabzen-tab');
     if (tabData) {
       try {
-        const { tabId, fromSpaceId, fromSessionId, fromGroupId } = JSON.parse(tabData);
-        moveTab(fromSpaceId, fromSessionId, fromGroupId, space.id, session.id, group0Id, tabId);
-      } catch {}
+        const { tabId: tId, fromSpaceId, fromSessionId, fromGroupId } = JSON.parse(tabData);
+        moveTab(fromSpaceId, fromSessionId, fromGroupId, space.id, session.id, group0Id, tId, dragOverTabIdx);
+      } catch { /* ignore */ }
       return;
     }
 
@@ -88,14 +112,11 @@ function SessionCard({ space, session }) {
         if (result !== 'duplicate' && settings.closeOnSave && tab.browserTabId) {
           closeTab(tab.browserTabId);
         }
-      } catch {}
+      } catch { /* ignore */ }
     }
   };
 
   const displayDate = session.updatedAt || session.createdAt;
-  const dateStr = displayDate
-    ? new Date(displayDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '';
 
   return (
     <article
@@ -107,7 +128,7 @@ function SessionCard({ space, session }) {
         e.dataTransfer.dropEffect = e.dataTransfer.types.includes('application/tabzen-tab') ? 'move' : 'copy';
         setDragOver(true);
       }}
-      onDragLeave={() => setDragOver(false)}
+      onDragLeave={() => { setDragOver(false); setDragOverTabIdx(null); }}
       onDrop={handleDrop}
     >
       {/* Header */}
@@ -117,7 +138,7 @@ function SessionCard({ space, session }) {
       >
         <svg
           width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
-          className={`text-txt-muted shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`text-txt-muted shrink-0 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
         >
           <path d="M6 3l5 5-5 5" />
         </svg>
@@ -142,9 +163,9 @@ function SessionCard({ space, session }) {
         </div>
 
         <span className="text-xs text-txt-muted shrink-0">{allTabs.length} вкл.</span>
-        {dateStr && <span className="text-xs text-txt-muted shrink-0 hidden sm:inline">{dateStr}</span>}
+        {displayDate && <span className="text-xs text-txt-muted shrink-0 hidden sm:inline">{relativeDate(displayDate)}</span>}
 
-        {/* Always-visible action buttons */}
+        {/* Always-visible actions */}
         <div className="flex gap-1 shrink-0">
           <button
             onClick={handleRestore}
@@ -166,7 +187,6 @@ function SessionCard({ space, session }) {
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
-          {/* ... menu on hover */}
           <div className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
@@ -192,21 +212,27 @@ function SessionCard({ space, session }) {
         </div>
       </div>
 
-      {/* Expanded: vertical tab list */}
-      {expanded && (
+      {/* Expanded: vertical tab list with slide animation */}
+      <div
+        ref={contentRef}
+        className="overflow-hidden transition-[max-height] duration-200 ease-in-out"
+        style={{ maxHeight: expanded ? `${allTabs.length * 52 + 40}px` : '0px' }}
+      >
         <div className="border-t border-white/[0.04] px-5 py-2">
           {allTabs.length === 0 ? (
             <p className="text-xs text-txt-muted text-center py-4">
               Перетащите вкладки сюда
             </p>
           ) : (
-            allTabs.map((tab) => {
+            allTabs.map((tab, idx) => {
               const ownerGroup = session.groups.find((g) => g.tabs.some((t) => t.id === tab.id));
               const gId = ownerGroup?.id;
               return (
                 <div
                   key={tab.id}
-                  className="group/tab flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-canvas-hover/50 transition-colors"
+                  className={`group/tab flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-canvas-hover/50 transition-colors ${
+                    dragOverTabIdx === idx ? 'border-t-2 border-warm/40' : ''
+                  }`}
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData(
@@ -214,6 +240,11 @@ function SessionCard({ space, session }) {
                       JSON.stringify({ tabId: tab.id, fromSpaceId: space.id, fromSessionId: session.id, fromGroupId: gId })
                     );
                     e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverTabIdx(idx);
                   }}
                 >
                   <div className="w-4 h-4 shrink-0 flex items-center justify-center">
@@ -227,7 +258,9 @@ function SessionCard({ space, session }) {
                     <p className="text-xs text-txt-muted truncate">{safeHostname(tab.url)}</p>
                   </div>
                   <button
-                    onClick={() => gId && removeTab(space.id, session.id, gId, tab.id)}
+                    onClick={() => {
+                      if (gId) removeTab(space.id, session.id, gId, tab.id);
+                    }}
                     className="p-1 rounded opacity-0 group-hover/tab:opacity-100 hover:bg-rose-muted text-txt-muted hover:text-rose-accent transition-all"
                     title="Удалить"
                   >
@@ -240,12 +273,12 @@ function SessionCard({ space, session }) {
             })
           )}
         </div>
-      )}
+      </div>
     </article>
   );
 }
 
-export default function SessionsGrid({ searchQuery }) {
+export default function SessionsGrid({ searchQuery, expandSessionId, onExpandHandled }) {
   const spaces = useStore((s) => s.spaces);
   const activeSpaceId = useStore((s) => s.activeSpaceId);
   const addSession = useStore((s) => s.addSession);
@@ -269,7 +302,6 @@ export default function SessionsGrid({ searchQuery }) {
       )
     : allSessions;
 
-  // Sort by updatedAt (or createdAt) descending — newest first
   const sorted = [...filtered].sort((a, b) => {
     const aTime = a.session.updatedAt || a.session.createdAt || '';
     const bTime = b.session.updatedAt || b.session.createdAt || '';
@@ -277,6 +309,10 @@ export default function SessionsGrid({ searchQuery }) {
   });
 
   const targetSpaceId = activeSpaceId || spaces[0]?.id;
+
+  // Check if the active space has sessions
+  const activeSpace = activeSpaceId ? spaces.find((s) => s.id === activeSpaceId) : null;
+  const showSpaceEmpty = activeSpace && activeSpace.sessions.length === 0 && !searchQuery;
 
   return (
     <section className="animate-fade-in">
@@ -311,11 +347,24 @@ export default function SessionsGrid({ searchQuery }) {
         )}
       </div>
 
-      {sorted.length === 0 ? (
+      {showSpaceEmpty ? (
+        <div className="text-center py-16 text-txt-muted">
+          <svg width="40" height="40" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="0.8" className="mx-auto mb-3 opacity-20">
+            <rect x="2" y="2" width="12" height="12" rx="2" />
+            <path d="M5 6h6M5 8h4M5 10h5" />
+          </svg>
+          <p className="text-sm font-medium text-txt-tertiary">
+            Нет сохранённых сессий
+          </p>
+          <p className="text-xs text-txt-muted mt-1">
+            Сохраните текущие вкладки или перетащите их сюда
+          </p>
+        </div>
+      ) : sorted.length === 0 ? (
         <div className="text-center py-16 text-txt-muted">
           <div className="text-3xl mb-3 opacity-30">◇</div>
           <p className="text-sm font-medium text-txt-tertiary">
-            {searchQuery ? 'Сессии не найдены' : 'Пока нет сессий'}
+            {searchQuery ? 'Ничего не найдено' : 'Пока нет сессий'}
           </p>
           <p className="text-xs text-txt-muted mt-1">
             {searchQuery
@@ -330,6 +379,8 @@ export default function SessionsGrid({ searchQuery }) {
               key={session.id}
               space={space}
               session={session}
+              forceExpand={expandSessionId === session.id}
+              onExpandHandled={onExpandHandled}
             />
           ))}
         </div>

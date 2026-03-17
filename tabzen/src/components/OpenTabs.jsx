@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import useStore, { getSessionTabs } from '../store/useStore';
 import { closeTab, focusTab } from '../utils/chrome';
 
@@ -39,8 +39,18 @@ export default function OpenTabs({ searchQuery }) {
   const addSession = useStore((s) => s.addSession);
   const settings = useStore((s) => s.settings);
   const [savedIds, setSavedIds] = useState(new Set());
+  const [scrollState, setScrollState] = useState({ atStart: true, atEnd: false });
+  const scrollRef = useRef(null);
 
-  // Build set of URLs already saved in the current space
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setScrollState({
+      atStart: el.scrollTop <= 2,
+      atEnd: el.scrollTop + el.clientHeight >= el.scrollHeight - 2,
+    });
+  }, []);
+
   const savedUrls = useMemo(() => {
     const urls = new Set();
     const targetSpaces = activeSpaceId
@@ -103,7 +113,6 @@ export default function OpenTabs({ searchQuery }) {
 
     if (result === 'duplicate') return;
 
-    // Close browser tab if setting enabled
     if (settings.closeOnSave) {
       await closeTab(tab.id);
     }
@@ -167,73 +176,86 @@ export default function OpenTabs({ searchQuery }) {
           </p>
         </div>
       ) : (
-        <div
-          className="flex flex-wrap gap-2 overflow-y-auto px-1 pb-1 scrollbar-thin"
-          style={{ maxHeight: '120px', scrollbarWidth: 'thin' }}
-        >
-          {filtered.map((tab) => {
-            const alreadySaved = savedUrls.has(tab.url);
-            return (
-              <div
-                key={tab.id}
-                className="group relative flex items-center gap-1.5 pl-2 pr-1 py-1.5 rounded-lg bg-canvas-surface/60 border border-white/[0.04] hover:border-white/[0.08] hover:bg-canvas-surface transition-colors cursor-pointer"
-                style={{ maxWidth: '180px', minWidth: '140px' }}
-                onClick={() => focusTab(tab.id)}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    'application/tabzen-browser-tab',
-                    JSON.stringify({
-                      title: tab.title,
-                      url: tab.url,
-                      favicon: tab.favIconUrl || '',
-                      browserTabId: tab.id,
-                    })
-                  );
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-              >
-                <div className="w-4 h-4 flex items-center justify-center shrink-0 relative">
-                  <Favicon url={tab.favIconUrl} />
-                  {alreadySaved && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-warm border border-canvas-surface" title="Уже сохранена" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-txt-primary truncate leading-tight">{tab.title || 'Новая вкладка'}</p>
-                </div>
-                {tab.active && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-warm shrink-0" title="активная" />
-                )}
-                <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleSaveTab(tab); }}
-                    className="p-0.5 rounded hover:bg-warm/15 text-txt-muted hover:text-warm transition-colors"
-                    title="Сохранить"
-                  >
-                    {savedIds.has(tab.id) ? (
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-warm">
-                        <path d="M4 8l3 3 5-5" />
-                      </svg>
-                    ) : (
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M8 3v10M3 8l5 5 5-5" />
-                      </svg>
+        <div className="relative min-w-0 max-w-full overflow-hidden">
+          {/* Fade edges */}
+          {!scrollState.atStart && (
+            <div className="pointer-events-none absolute left-0 top-0 right-0 h-4 bg-gradient-to-b from-canvas-deep to-transparent z-10" />
+          )}
+          {!scrollState.atEnd && filtered.length > 12 && (
+            <div className="pointer-events-none absolute left-0 bottom-0 right-0 h-4 bg-gradient-to-t from-canvas-deep to-transparent z-10" />
+          )}
+
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex flex-wrap gap-2 overflow-y-auto px-1 pb-1 scrollbar-thin"
+            style={{ maxHeight: '120px', scrollbarWidth: 'thin' }}
+          >
+            {filtered.map((tab) => {
+              const alreadySaved = savedUrls.has(tab.url);
+              return (
+                <div
+                  key={tab.id}
+                  className="group relative flex items-center gap-1.5 pl-2 pr-1 py-1.5 rounded-lg bg-canvas-surface/60 border border-white/[0.04] hover:border-white/[0.08] hover:bg-canvas-surface transition-colors cursor-pointer"
+                  style={{ maxWidth: '180px', minWidth: '140px' }}
+                  onClick={() => focusTab(tab.id)}
+                  title={tab.title || 'Новая вкладка'}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      'application/tabzen-browser-tab',
+                      JSON.stringify({
+                        title: tab.title,
+                        url: tab.url,
+                        favicon: tab.favIconUrl || '',
+                        browserTabId: tab.id,
+                      })
+                    );
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                >
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0 relative">
+                    <Favicon url={tab.favIconUrl} />
+                    {alreadySaved && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-warm border border-canvas-surface" title="Уже сохранена" />
                     )}
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleCloseTab(tab.id); }}
-                    className="p-0.5 rounded hover:bg-rose-muted text-txt-muted hover:text-rose-accent transition-colors"
-                    title="Закрыть"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M4 4l8 8M12 4l-8 8" />
-                    </svg>
-                  </button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-txt-primary truncate leading-tight">{tab.title || 'Новая вкладка'}</p>
+                  </div>
+                  {tab.active && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-warm shrink-0" title="активная" />
+                  )}
+                  <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSaveTab(tab); }}
+                      className="p-0.5 rounded hover:bg-warm/15 text-txt-muted hover:text-warm transition-colors"
+                      title="Сохранить"
+                    >
+                      {savedIds.has(tab.id) ? (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-warm">
+                          <path d="M4 8l3 3 5-5" />
+                        </svg>
+                      ) : (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M8 3v10M3 8l5 5 5-5" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCloseTab(tab.id); }}
+                      className="p-0.5 rounded hover:bg-rose-muted text-txt-muted hover:text-rose-accent transition-colors"
+                      title="Закрыть"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M4 4l8 8M12 4l-8 8" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </section>

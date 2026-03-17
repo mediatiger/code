@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import useStore, { getSessionTabs } from '../store/useStore';
+import { getStorageUsage } from '../utils/chrome';
 
 const COLORS = [
   { id: 'media', label: 'Фиолетовый', css: 'bg-space-media' },
@@ -89,6 +90,14 @@ export default function Sidebar() {
 
   const settings = useStore((s) => s.settings);
   const updateSettings = useStore((s) => s.updateSettings);
+  const exportData = useStore((s) => s.exportData);
+  const importData = useStore((s) => s.importData);
+  const [storageUsage, setStorageUsage] = useState(0);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    getStorageUsage().then(setStorageUsage);
+  }, [spaces]);
 
   const totalTabs = spaces.reduce(
     (sum, sp) => sum + sp.sessions.reduce((s2, sess) => s2 + getSessionTabs(sess).length, 0),
@@ -191,11 +200,11 @@ export default function Sidebar() {
       </div>
 
       {/* Settings */}
-      <div className="border-t border-white/[0.04] px-3 py-3">
+      <div className="border-t border-white/[0.04] px-3 py-3 space-y-1">
         <div className="text-[10px] font-semibold text-txt-muted tracking-[0.1em] uppercase px-2 mb-2">
           Настройки
         </div>
-        <label className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-txt-secondary hover:bg-canvas-elevated cursor-pointer transition-colors">
+        <label className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm text-txt-secondary hover:bg-canvas-elevated cursor-pointer transition-colors">
           <input
             type="checkbox"
             checked={settings.closeOnSave}
@@ -204,6 +213,44 @@ export default function Sidebar() {
           />
           <span className="text-xs leading-tight">Закрывать вкладку при сохранении</span>
         </label>
+        <button
+          onClick={exportData}
+          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-txt-secondary hover:text-txt-primary hover:bg-canvas-elevated transition-colors"
+        >
+          Экспорт данных
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-txt-secondary hover:text-txt-primary hover:bg-canvas-elevated transition-colors"
+        >
+          Импорт данных
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              importData(ev.target.result);
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+          }}
+        />
+        {/* Storage usage */}
+        {(() => {
+          const mb = (storageUsage / (1024 * 1024)).toFixed(1);
+          const isWarn = storageUsage > 4 * 1024 * 1024;
+          return (
+            <p className={`px-2.5 py-1 text-[10px] ${isWarn ? 'text-amber-400' : 'text-txt-muted'}`}>
+              Использовано: {mb} MB из 5 MB
+            </p>
+          );
+        })()}
       </div>
 
       {/* Context menu — portal to body so it's never clipped by sidebar overflow */}

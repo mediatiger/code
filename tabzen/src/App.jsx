@@ -4,13 +4,11 @@ import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import OpenTabs from './components/OpenTabs';
 import SessionsGrid from './components/SessionsGrid';
-import SessionDetail from './components/SessionDetail';
 
 export default function App() {
   const hydrate = useStore((s) => s.hydrate);
   const loadOpenTabs = useStore((s) => s.loadOpenTabs);
   const hydrated = useStore((s) => s.hydrated);
-  const [expandedSession, setExpandedSession] = useState(null); // { spaceId, sessionId }
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -34,23 +32,8 @@ export default function App() {
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
         <Topbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden px-8 pb-8">
-          {expandedSession ? (
-            <SessionDetail
-              spaceId={expandedSession.spaceId}
-              sessionId={expandedSession.sessionId}
-              onBack={() => setExpandedSession(null)}
-            />
-          ) : (
-            <>
-              <OpenTabs searchQuery={searchQuery} />
-              <SessionsGrid
-                searchQuery={searchQuery}
-                onExpandSession={(spaceId, sessionId) =>
-                  setExpandedSession({ spaceId, sessionId })
-                }
-              />
-            </>
-          )}
+          <OpenTabs searchQuery={searchQuery} />
+          <SessionsGrid searchQuery={searchQuery} />
         </main>
       </div>
     </div>

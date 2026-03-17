@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import useStore from '../store/useStore';
+import useStore, { getSessionTabs } from '../store/useStore';
 
 const COLORS = [
   { id: 'media', label: 'Фиолетовый', css: 'bg-space-media' },
@@ -87,9 +87,11 @@ export default function Sidebar() {
     setMenuId(null);
   };
 
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+
   const totalTabs = spaces.reduce(
-    (sum, sp) =>
-      sum + sp.sessions.reduce((s2, sess) => s2 + sess.groups.reduce((s3, g) => s3 + g.tabs.length, 0), 0),
+    (sum, sp) => sum + sp.sessions.reduce((s2, sess) => s2 + getSessionTabs(sess).length, 0),
     0
   );
 
@@ -156,7 +158,7 @@ export default function Sidebar() {
                 <span className="flex-1 text-left truncate">{sp.name}</span>
               )}
               <span className="text-xs text-txt-muted">
-                {sp.sessions.reduce((s, sess) => s + sess.groups.reduce((s2, g) => s2 + g.tabs.length, 0), 0)}
+                {sp.sessions.reduce((s, sess) => s + getSessionTabs(sess).length, 0)}
               </span>
 
               {/* ... menu trigger */}
@@ -183,6 +185,22 @@ export default function Sidebar() {
           <span className="w-4 h-4 flex items-center justify-center text-xs">+</span>
           <span>Добавить</span>
         </button>
+      </div>
+
+      {/* Settings */}
+      <div className="border-t border-white/[0.04] px-3 py-3">
+        <div className="text-[10px] font-semibold text-txt-muted tracking-[0.1em] uppercase px-2 mb-2">
+          Настройки
+        </div>
+        <label className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-txt-secondary hover:bg-canvas-elevated cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            checked={settings.closeOnSave}
+            onChange={(e) => updateSettings({ closeOnSave: e.target.checked })}
+            className="accent-warm w-3.5 h-3.5"
+          />
+          <span className="text-xs leading-tight">Закрывать вкладку при сохранении</span>
+        </label>
       </div>
 
       {/* Context menu — portal to body so it's never clipped by sidebar overflow */}

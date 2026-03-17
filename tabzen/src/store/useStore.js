@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { spaceId, sessId, groupId, tabId } from '../utils/ids';
-import { loadState, saveState, getOpenTabs, loadSettings, saveSettings, getCurrentTab, closeAllTabsExcept, exportAllData, importAllData } from '../utils/chrome';
+import { loadState, saveState, getOpenTabs, loadSettings, saveSettings, getCurrentTab, closeAllTabsExcept, exportAllData, importAllData, getTabGroups } from '../utils/chrome';
 
 const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal', 'amber', 'orange', 'coral', 'rose', 'violet', 'indigo', 'teal', 'emerald', 'lime', 'slate'];
 
@@ -364,6 +364,158 @@ const useStore = create((set, get) => ({
     if (!sessionId) return;
     const selfTab = await getCurrentTab();
     await closeAllTabsExcept(selfTab?.id);
+  },
+
+  // ============================================
+  // SAVE BY CHROME TAB GROUPS
+  // ============================================
+  saveByGroups: async (spaceIdTarget, closeTabs = false) => {
+    const CHROME_COLOR_MAP = {
+      grey: 'slate', blue: 'learning', red: 'coral', yellow: 'amber',
+      green: 'projects', pink: 'personal', purple: 'media', cyan: 'teal',
+      orange: 'orange',
+    };
+
+    const tabs = await getOpenTabs();
+    if (!tabs.length) return;
+
+    const uniqueGroupIds = [...new Set(tabs.map((t) => t.groupId).filter((id) => id !== -1 && id !== undefined))];
+
+    // If no groups exist, fall back to single session
+    if (uniqueGroupIds.length === 0) {
+      return get().saveCurrentTabs(spaceIdTarget);
+    }
+
+    const groupMeta = await getTabGroups(uniqueGroupIds);
+
+    // Bucket tabs by groupId
+    const buckets = {};
+    for (const tab of tabs) {
+      const gid = (tab.groupId != null && tab.groupId !== -1) ? tab.groupId : 'ungrouped';
+      if (!buckets[gid]) buckets[gid] = [];
+      buckets[gid].push(tab);
+    }
+
+    const now = new Date().toISOString();
+    const newSessions = [];
+
+    for (const [gid, groupTabs] of Object.entries(buckets)) {
+      const meta = gid !== 'ungrouped' ? groupMeta[gid] : null;
+      const title = meta?.title || (gid === 'ungrouped' ? 'Без группы' : `Группа ${gid}`);
+      const sessionTabs = groupTabs.map((t) => ({
+        id: tabId(),
+        title: t.title || 'Untitled',
+        url: t.url,
+        favicon: t.favIconUrl || '',
+      }));
+      newSessions.push({
+        id: sessId(),
+        title,
+        createdAt: now,
+        updatedAt: now,
+        groups: [{ id: groupId(), name: 'Вкладки', tabs: sessionTabs }],
+      });
+    }
+
+    set((s) => {
+      const spaces = s.spaces.map((sp) => {
+        if (sp.id !== spaceIdTarget) return sp;
+        return { ...sp, sessions: [...newSessions, ...sp.sessions] };
+      });
+      persist({ spaces });
+      return { spaces };
+    });
+
+    const totalTabs = tabs.length;
+    get().showToast(`Сохранено ${newSessions.length} сессий — ${totalTabs} вкладок`);
+
+    if (closeTabs) {
+      const selfTab = await getCurrentTab();
+      await closeAllTabsExcept(selfTab?.id);
+    }
+  },
+
+  // ============================================
+  // SORT BY DOMAIN
+  // ============================================
+  sortByDomain: async (spaceIdTarget) => {
+    const tabs = await getOpenTabs();
+    if (!tabs.length) return;
+
+    // Group by domain
+    const domainMap = {};
+    for (const tab of tabs) {
+      let hostname;
+      try { hostname = new URL(tab.url).hostname; } catch { hostname = 'other'; }
+      if (!domainMap[hostname]) domainMap[hostname] = [];
+      domainMap[hostname].push(tab);
+    }
+
+    const multiDomains = Object.entries(domainMap).filter(([, t]) => t.length >= 2);
+    const singleTabs = Object.entries(domainMap).filter(([, t]) => t.length < 2).flatMap(([, t]) => t);
+    const totalSessions = multiDomains.length + (singleTabs.length > 0 ? 1 : 0);
+
+    const msg = `Разобрать ${tabs.length} вкладок по сайтам? Будет создано ~${totalSessions} сессий`;
+    if (!confirm(msg)) return;
+
+    const now = new Date().toISOString();
+    const newSessions = [];
+
+    // Pretty domain names
+    const prettyDomain = (host) => {
+      const parts = host.replace(/^www\./, '').split('.');
+      if (parts.length >= 2) return parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+      return host;
+    };
+
+    for (const [hostname, domainTabs] of multiDomains) {
+      const sessionTabs = domainTabs.map((t) => ({
+        id: tabId(),
+        title: t.title || 'Untitled',
+        url: t.url,
+        favicon: t.favIconUrl || '',
+      }));
+      newSessions.push({
+        id: sessId(),
+        title: prettyDomain(hostname),
+        createdAt: now,
+        updatedAt: now,
+        groups: [{ id: groupId(), name: 'Вкладки', tabs: sessionTabs }],
+      });
+    }
+
+    if (singleTabs.length > 0) {
+      const sessionTabs = singleTabs.map((t) => ({
+        id: tabId(),
+        title: t.title || 'Untitled',
+        url: t.url,
+        favicon: t.favIconUrl || '',
+      }));
+      newSessions.push({
+        id: sessId(),
+        title: 'Разное',
+        createdAt: now,
+        updatedAt: now,
+        groups: [{ id: groupId(), name: 'Вкладки', tabs: sessionTabs }],
+      });
+    }
+
+    set((s) => {
+      const spaces = s.spaces.map((sp) => {
+        if (sp.id !== spaceIdTarget) return sp;
+        return { ...sp, sessions: [...newSessions, ...sp.sessions] };
+      });
+      persist({ spaces });
+      return { spaces };
+    });
+
+    const closeOnSave = get().settings.closeOnSave;
+    if (closeOnSave) {
+      const selfTab = await getCurrentTab();
+      await closeAllTabsExcept(selfTab?.id);
+    }
+
+    get().showToast(`Создано ${newSessions.length} сессий`);
   },
 
   // ============================================

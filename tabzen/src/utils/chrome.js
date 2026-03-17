@@ -104,6 +104,19 @@ export async function closeAllTabsExcept(keepTabId) {
   } catch { /* ignore */ }
 }
 
+export async function getTabGroups(groupIds) {
+  if (!isChromeExt || !chrome.tabGroups) return {};
+  const map = {};
+  for (const gid of groupIds) {
+    if (gid === -1) continue;
+    try {
+      const group = await chrome.tabGroups.get(gid);
+      map[gid] = { title: group.title || '', color: group.color || '' };
+    } catch { /* ignore */ }
+  }
+  return map;
+}
+
 export async function getStorageUsage() {
   if (!isChromeExt) return 0;
   try {

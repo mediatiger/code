@@ -3,7 +3,7 @@
   "name": "TabZen",
   "version": "0.1.0",
   "description": "Local tab workspace manager",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "tabGroups", "unlimitedStorage"],
   "chrome_url_overrides": {
     "newtab": "index.html"
   },

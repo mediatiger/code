@@ -5,6 +5,16 @@ import Topbar from './components/Topbar';
 import OpenTabs from './components/OpenTabs';
 import SessionsGrid from './components/SessionsGrid';
 
+function Toast() {
+  const toast = useStore((s) => s.toast);
+  if (!toast) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2.5 rounded-xl bg-canvas-elevated border border-white/[0.08] shadow-xl text-sm text-txt-primary animate-fade-in">
+      {toast.message}
+    </div>
+  );
+}
+
 export default function App() {
   const hydrate = useStore((s) => s.hydrate);
   const loadOpenTabs = useStore((s) => s.loadOpenTabs);
@@ -36,6 +46,7 @@ export default function App() {
           <SessionsGrid searchQuery={searchQuery} />
         </main>
       </div>
+      <Toast />
     </div>
   );
 }

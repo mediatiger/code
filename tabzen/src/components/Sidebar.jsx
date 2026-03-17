@@ -102,7 +102,10 @@ export default function Sidebar() {
         <div className="w-8 h-8 rounded-lg bg-warm/15 flex items-center justify-center text-warm text-sm font-semibold">
           ◈
         </div>
-        <span className="text-txt-primary font-semibold text-base tracking-tight">TabZen</span>
+        <div>
+          <span className="text-txt-primary font-semibold text-base tracking-tight block leading-tight">TabZen</span>
+          <span className="text-[11px] italic text-txt-muted opacity-45 leading-tight">by Anton Karpov</span>
+        </div>
       </div>
 
       {/* Spaces */}

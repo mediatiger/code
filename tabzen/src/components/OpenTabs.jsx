@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import useStore from '../store/useStore';
+import React, { useState, useMemo } from 'react';
+import useStore, { getSessionTabs } from '../store/useStore';
 import { closeTab, focusTab } from '../utils/chrome';
 
 function Favicon({ url, size = 14 }) {
-  if (!url) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
     return (
       <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
-        <rect x="2" y="2" width="12" height="12" rx="2" />
+        <circle cx="8" cy="8" r="6" />
+        <path d="M3 8h10M8 2.5c-1.5 2-1.5 9 0 11M8 2.5c1.5 2 1.5 9 0 11" />
       </svg>
     );
   }
@@ -17,7 +19,7 @@ function Favicon({ url, size = 14 }) {
       height={size}
       alt=""
       className="rounded-sm"
-      onError={(e) => { e.target.style.display = 'none'; }}
+      onError={() => setFailed(true)}
     />
   );
 }
@@ -32,10 +34,27 @@ export default function OpenTabs({ searchQuery }) {
   const spaces = useStore((s) => s.spaces);
   const activeSpaceId = useStore((s) => s.activeSpaceId);
   const saveCurrentTabs = useStore((s) => s.saveCurrentTabs);
+  const saveAndCloseAll = useStore((s) => s.saveAndCloseAll);
   const addTab = useStore((s) => s.addTab);
   const addSession = useStore((s) => s.addSession);
   const settings = useStore((s) => s.settings);
   const [savedIds, setSavedIds] = useState(new Set());
+
+  // Build set of URLs already saved in the current space
+  const savedUrls = useMemo(() => {
+    const urls = new Set();
+    const targetSpaces = activeSpaceId
+      ? spaces.filter((s) => s.id === activeSpaceId)
+      : spaces;
+    for (const sp of targetSpaces) {
+      for (const sess of sp.sessions) {
+        for (const tab of getSessionTabs(sess)) {
+          urls.add(tab.url);
+        }
+      }
+    }
+    return urls;
+  }, [spaces, activeSpaceId]);
 
   const filtered = searchQuery
     ? openTabs.filter(
@@ -50,6 +69,11 @@ export default function OpenTabs({ searchQuery }) {
   const handleSaveAll = async () => {
     if (!targetSpaceId) return;
     await saveCurrentTabs(targetSpaceId);
+  };
+
+  const handleSaveAndCloseAll = async () => {
+    if (!targetSpaceId) return;
+    await saveAndCloseAll(targetSpaceId);
   };
 
   const handleSaveTab = async (tab) => {
@@ -71,11 +95,13 @@ export default function OpenTabs({ searchQuery }) {
       if (!gId) return;
     }
 
-    addTab(targetSpaceId, sId, gId, {
+    const result = addTab(targetSpaceId, sId, gId, {
       title: tab.title || 'Untitled',
       url: tab.url,
       favicon: tab.favIconUrl || '',
     });
+
+    if (result === 'duplicate') return;
 
     // Close browser tab if setting enabled
     if (settings.closeOnSave) {
@@ -115,6 +141,16 @@ export default function OpenTabs({ searchQuery }) {
               </svg>
               Сохранить сессию
             </button>
+            <button
+              onClick={handleSaveAndCloseAll}
+              className="flex items-center gap-1.5 text-xs text-txt-muted hover:text-txt-secondary border border-white/[0.06] rounded-lg px-3 py-1.5 hover:border-white/[0.1] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M8 3v7M3 8l5 2 5-2" />
+                <path d="M4 13h8" />
+              </svg>
+              Сохранить и закрыть все
+            </button>
           </>
         )}
       </div>
@@ -131,16 +167,17 @@ export default function OpenTabs({ searchQuery }) {
           </p>
         </div>
       ) : (
-        <div className="relative min-w-0 max-w-full">
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-canvas-deep to-transparent z-10" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-canvas-deep to-transparent z-10" />
-
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin px-1" style={{ scrollbarWidth: 'thin' }}>
-            {filtered.map((tab) => (
+        <div
+          className="flex flex-wrap gap-2 overflow-y-auto px-1 pb-1 scrollbar-thin"
+          style={{ maxHeight: '120px', scrollbarWidth: 'thin' }}
+        >
+          {filtered.map((tab) => {
+            const alreadySaved = savedUrls.has(tab.url);
+            return (
               <div
                 key={tab.id}
-                className="group flex items-center gap-2 pl-2.5 pr-1.5 py-2 rounded-xl bg-canvas-surface/60 border border-white/[0.04] hover:border-white/[0.08] hover:bg-canvas-surface transition-colors cursor-pointer shrink-0"
-                style={{ maxWidth: '220px', minWidth: '160px' }}
+                className="group relative flex items-center gap-1.5 pl-2 pr-1 py-1.5 rounded-lg bg-canvas-surface/60 border border-white/[0.04] hover:border-white/[0.08] hover:bg-canvas-surface transition-colors cursor-pointer"
+                style={{ maxWidth: '180px', minWidth: '140px' }}
                 onClick={() => focusTab(tab.id)}
                 draggable
                 onDragStart={(e) => {
@@ -156,12 +193,14 @@ export default function OpenTabs({ searchQuery }) {
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
               >
-                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                <div className="w-4 h-4 flex items-center justify-center shrink-0 relative">
                   <Favicon url={tab.favIconUrl} />
+                  {alreadySaved && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-warm border border-canvas-surface" title="Уже сохранена" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-txt-primary truncate leading-tight">{tab.title || 'Новая вкладка'}</p>
-                  <p className="text-[10px] text-txt-muted truncate leading-tight">{safeHostname(tab.url)}</p>
+                  <p className="text-[11px] text-txt-primary truncate leading-tight">{tab.title || 'Новая вкладка'}</p>
                 </div>
                 {tab.active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-warm shrink-0" title="активная" />
@@ -169,32 +208,32 @@ export default function OpenTabs({ searchQuery }) {
                 <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleSaveTab(tab); }}
-                    className="p-1 rounded hover:bg-warm/15 text-txt-muted hover:text-warm transition-colors"
+                    className="p-0.5 rounded hover:bg-warm/15 text-txt-muted hover:text-warm transition-colors"
                     title="Сохранить"
                   >
                     {savedIds.has(tab.id) ? (
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-warm">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-warm">
                         <path d="M4 8l3 3 5-5" />
                       </svg>
                     ) : (
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M8 3v10M3 8l5 5 5-5" />
                       </svg>
                     )}
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleCloseTab(tab.id); }}
-                    className="p-1 rounded hover:bg-rose-muted text-txt-muted hover:text-rose-accent transition-colors"
+                    className="p-0.5 rounded hover:bg-rose-muted text-txt-muted hover:text-rose-accent transition-colors"
                     title="Закрыть"
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M4 4l8 8M12 4l-8 8" />
                     </svg>
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
     </section>

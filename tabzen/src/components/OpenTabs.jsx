@@ -35,6 +35,8 @@ export default function OpenTabs({ searchQuery }) {
   const activeSpaceId = useStore((s) => s.activeSpaceId);
   const saveCurrentTabs = useStore((s) => s.saveCurrentTabs);
   const saveAndCloseAll = useStore((s) => s.saveAndCloseAll);
+  const saveByGroups = useStore((s) => s.saveByGroups);
+  const sortByDomain = useStore((s) => s.sortByDomain);
   const addTab = useStore((s) => s.addTab);
   const addSession = useStore((s) => s.addSession);
   const settings = useStore((s) => s.settings);
@@ -159,6 +161,29 @@ export default function OpenTabs({ searchQuery }) {
                 <path d="M4 13h8" />
               </svg>
               Сохранить и закрыть все
+            </button>
+            <button
+              onClick={() => targetSpaceId && saveByGroups(targetSpaceId)}
+              className="flex items-center gap-1.5 text-xs text-txt-muted hover:text-txt-secondary border border-white/[0.06] rounded-lg px-3 py-1.5 hover:border-white/[0.1] transition-colors"
+              title="Сохранить каждую группу Chrome как отдельную сессию"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="2" width="6" height="5" rx="1" />
+                <rect x="9" y="2" width="6" height="5" rx="1" />
+                <rect x="1" y="9" width="6" height="5" rx="1" />
+                <rect x="9" y="9" width="6" height="5" rx="1" />
+              </svg>
+              Сохранить по группам
+            </button>
+            <button
+              onClick={() => targetSpaceId && sortByDomain(targetSpaceId)}
+              className="flex items-center gap-1.5 text-xs text-txt-muted hover:text-txt-secondary border border-white/[0.06] rounded-lg px-3 py-1.5 hover:border-white/[0.1] transition-colors"
+              title="Разобрать вкладки по доменам"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 4h12M4 8h8M6 12h4" />
+              </svg>
+              Разобрать по сайтам
             </button>
           </>
         )}

@@ -242,15 +242,9 @@ export default function Sidebar() {
           }}
         />
         {/* Storage usage */}
-        {(() => {
-          const mb = (storageUsage / (1024 * 1024)).toFixed(1);
-          const isWarn = storageUsage > 4 * 1024 * 1024;
-          return (
-            <p className={`px-2.5 py-1 text-[10px] ${isWarn ? 'text-amber-400' : 'text-txt-muted'}`}>
-              Использовано: {mb} MB из 5 MB
-            </p>
-          );
-        })()}
+        <p className="px-2.5 py-1 text-[10px] text-txt-muted">
+          Использовано: {(storageUsage / (1024 * 1024)).toFixed(1)} MB
+        </p>
       </div>
 
       {/* Context menu — portal to body so it's never clipped by sidebar overflow */}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { spaceId, sessId, groupId, tabId } from '../utils/ids';
-import { loadState, saveState, getOpenTabs } from '../utils/chrome';
+import { loadState, saveState, getOpenTabs, loadSettings, saveSettings } from '../utils/chrome';
 
 const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal', 'amber', 'orange', 'coral', 'rose', 'violet', 'indigo', 'teal', 'emerald', 'lime', 'slate'];
 
@@ -16,6 +16,17 @@ function persist(state) {
   saveState({ spaces: state.spaces });
 }
 
+// Helper: get all tabs from a session (flatten groups)
+export function getSessionTabs(session) {
+  return session.groups.flatMap((g) => g.tabs);
+}
+
+// Helper: get groups[0].id, creating one if missing
+function ensureGroup(session) {
+  if (session.groups.length > 0) return session;
+  return { ...session, groups: [{ id: `group_${Date.now()}`, name: 'Вкладки', tabs: [] }] };
+}
+
 const useStore = create((set, get) => ({
   // --- State ---
   spaces: defaultSpaces,
@@ -23,15 +34,16 @@ const useStore = create((set, get) => ({
   openTabs: [],
   openTabsLoading: true,
   hydrated: false,
+  settings: { closeOnSave: false },
 
   // --- Hydrate from chrome.storage ---
   hydrate: async () => {
     const data = await loadState();
-    if (data?.spaces?.length) {
-      set({ spaces: data.spaces, hydrated: true });
-    } else {
-      set({ hydrated: true });
-    }
+    const settings = await loadSettings();
+    const patch = { hydrated: true };
+    if (data?.spaces?.length) patch.spaces = data.spaces;
+    if (settings) patch.settings = { ...get().settings, ...settings };
+    set(patch);
   },
 
   // --- Open tabs ---
@@ -328,6 +340,17 @@ const useStore = create((set, get) => ({
 
       persist({ spaces });
       return { spaces };
+    });
+  },
+
+  // ============================================
+  // SETTINGS
+  // ============================================
+  updateSettings: (patch) => {
+    set((s) => {
+      const settings = { ...s.settings, ...patch };
+      saveSettings(settings);
+      return { settings };
     });
   },
 }));

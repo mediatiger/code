@@ -18,6 +18,22 @@ export async function saveState(data) {
   });
 }
 
+export async function loadSettings() {
+  if (!isChromeExt) return null;
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['tabzen_settings'], (result) => {
+      resolve(result.tabzen_settings || null);
+    });
+  });
+}
+
+export async function saveSettings(settings) {
+  if (!isChromeExt) return;
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ tabzen_settings: settings }, resolve);
+  });
+}
+
 export async function getOpenTabs() {
   if (!isChromeExt || !chrome.tabs) return [];
   return new Promise((resolve) => {

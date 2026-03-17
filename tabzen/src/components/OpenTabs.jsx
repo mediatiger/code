@@ -34,6 +34,7 @@ export default function OpenTabs({ searchQuery }) {
   const saveCurrentTabs = useStore((s) => s.saveCurrentTabs);
   const addTab = useStore((s) => s.addTab);
   const addSession = useStore((s) => s.addSession);
+  const settings = useStore((s) => s.settings);
   const [savedIds, setSavedIds] = useState(new Set());
 
   const filtered = searchQuery
@@ -51,8 +52,7 @@ export default function OpenTabs({ searchQuery }) {
     await saveCurrentTabs(targetSpaceId);
   };
 
-  // Bug 5 fix: auto-create session if none exists
-  const handleSaveTab = (tab) => {
+  const handleSaveTab = async (tab) => {
     if (!targetSpaceId) return;
     const space = spaces.find((s) => s.id === targetSpaceId);
     if (!space) return;
@@ -64,9 +64,7 @@ export default function OpenTabs({ searchQuery }) {
       sId = session.id;
       gId = session.groups[0].id;
     } else {
-      // Auto-create a session
       sId = addSession(targetSpaceId, 'Сохранённые вкладки');
-      // Re-read space after mutation
       const updatedSpace = useStore.getState().spaces.find((s) => s.id === targetSpaceId);
       const newSession = updatedSpace?.sessions.find((s) => s.id === sId);
       gId = newSession?.groups[0]?.id;
@@ -79,7 +77,11 @@ export default function OpenTabs({ searchQuery }) {
       favicon: tab.favIconUrl || '',
     });
 
-    // Visual feedback
+    // Close browser tab if setting enabled
+    if (settings.closeOnSave) {
+      await closeTab(tab.id);
+    }
+
     setSavedIds((prev) => new Set(prev).add(tab.id));
     setTimeout(() => setSavedIds((prev) => {
       const next = new Set(prev);
@@ -129,9 +131,7 @@ export default function OpenTabs({ searchQuery }) {
           </p>
         </div>
       ) : (
-        /* Bug 1 fix: horizontal scrollable row of compact chips */
         <div className="relative min-w-0 max-w-full">
-          {/* Fade edges */}
           <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-canvas-deep to-transparent z-10" />
           <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-canvas-deep to-transparent z-10" />
 
@@ -150,6 +150,7 @@ export default function OpenTabs({ searchQuery }) {
                       title: tab.title,
                       url: tab.url,
                       favicon: tab.favIconUrl || '',
+                      browserTabId: tab.id,
                     })
                   );
                   e.dataTransfer.effectAllowed = 'copy';
@@ -165,7 +166,6 @@ export default function OpenTabs({ searchQuery }) {
                 {tab.active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-warm shrink-0" title="активная" />
                 )}
-                {/* Action buttons */}
                 <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleSaveTab(tab); }}

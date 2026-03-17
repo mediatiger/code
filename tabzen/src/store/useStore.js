@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { spaceId, sessId, groupId, tabId } from '../utils/ids';
-import { loadState, saveState, getOpenTabs, loadSettings, saveSettings } from '../utils/chrome';
+import { loadState, saveState, getOpenTabs, loadSettings, saveSettings, getCurrentTab, closeAllTabsExcept } from '../utils/chrome';
 
 const SPACE_COLORS = ['media', 'projects', 'crypto', 'learning', 'personal', 'amber', 'orange', 'coral', 'rose', 'violet', 'indigo', 'teal', 'emerald', 'lime', 'slate'];
 
@@ -35,6 +35,7 @@ const useStore = create((set, get) => ({
   openTabsLoading: true,
   hydrated: false,
   settings: { closeOnSave: false },
+  toast: null, // { message, type } — ephemeral toast
 
   // --- Hydrate from chrome.storage ---
   hydrate: async () => {
@@ -111,6 +112,7 @@ const useStore = create((set, get) => ({
               id,
               title,
               createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
               groups: [{ id: groupId(), name: 'Вкладки', tabs: [] }],
             },
           ],
@@ -171,6 +173,7 @@ const useStore = create((set, get) => ({
               id,
               title: title || `Сессия ${new Date().toLocaleString('ru-RU')}`,
               createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
               groups: [{ id: groupId(), name: 'Вкладки', tabs: sessionTabs }],
             },
             ...sp.sessions,
@@ -246,7 +249,20 @@ const useStore = create((set, get) => ({
   // TAB CRUD
   // ============================================
   addTab: (spaceIdTarget, sessionId, gId, tab) => {
+    // Duplicate check: same URL already in this session?
+    const space = get().spaces.find((sp) => sp.id === spaceIdTarget);
+    const session = space?.sessions.find((sess) => sess.id === sessionId);
+    if (session) {
+      const existing = getSessionTabs(session).some((t) => t.url === tab.url);
+      if (existing) {
+        set({ toast: { message: 'Вкладка уже сохранена', type: 'warn' } });
+        setTimeout(() => set({ toast: null }), 2500);
+        return 'duplicate';
+      }
+    }
+
     const id = tabId();
+    const now = new Date().toISOString();
     set((s) => {
       const spaces = s.spaces.map((sp) => {
         if (sp.id !== spaceIdTarget) return sp;
@@ -256,6 +272,7 @@ const useStore = create((set, get) => ({
             if (sess.id !== sessionId) return sess;
             return {
               ...sess,
+              updatedAt: now,
               groups: sess.groups.map((g) => {
                 if (g.id !== gId) return g;
                 return { ...g, tabs: [...g.tabs, { id, ...tab }] };
@@ -271,6 +288,7 @@ const useStore = create((set, get) => ({
   },
 
   removeTab: (spaceIdTarget, sessionId, gId, tId) => {
+    const now = new Date().toISOString();
     set((s) => {
       const spaces = s.spaces.map((sp) => {
         if (sp.id !== spaceIdTarget) return sp;
@@ -280,6 +298,7 @@ const useStore = create((set, get) => ({
             if (sess.id !== sessionId) return sess;
             return {
               ...sess,
+              updatedAt: now,
               groups: sess.groups.map((g) => {
                 if (g.id !== gId) return g;
                 return { ...g, tabs: g.tabs.filter((t) => t.id !== tId) };
@@ -341,6 +360,24 @@ const useStore = create((set, get) => ({
       persist({ spaces });
       return { spaces };
     });
+  },
+
+  // ============================================
+  // SAVE & CLOSE ALL
+  // ============================================
+  saveAndCloseAll: async (spaceIdTarget) => {
+    const sessionId = await get().saveCurrentTabs(spaceIdTarget);
+    if (!sessionId) return;
+    const selfTab = await getCurrentTab();
+    await closeAllTabsExcept(selfTab?.id);
+  },
+
+  // ============================================
+  // TOAST
+  // ============================================
+  showToast: (message, type = 'info') => {
+    set({ toast: { message, type } });
+    setTimeout(() => set({ toast: null }), 2500);
   },
 
   // ============================================

@@ -69,3 +69,23 @@ export async function focusTab(tabId) {
   if (!isChromeExt || !chrome.tabs) return;
   return chrome.tabs.update(tabId, { active: true });
 }
+
+export async function getCurrentTab() {
+  if (!isChromeExt || !chrome.tabs) return null;
+  return new Promise((resolve) => {
+    chrome.tabs.getCurrent((tab) => resolve(tab || null));
+  });
+}
+
+export async function closeAllTabsExcept(keepTabId) {
+  if (!isChromeExt || !chrome.tabs) return;
+  return new Promise((resolve) => {
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+      const toClose = (tabs || [])
+        .filter((t) => t.id !== keepTabId && !t.url?.startsWith('chrome://') && !t.url?.startsWith('chrome-extension://'))
+        .map((t) => t.id);
+      if (toClose.length) chrome.tabs.remove(toClose, resolve);
+      else resolve();
+    });
+  });
+}
